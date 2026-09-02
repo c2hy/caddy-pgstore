@@ -79,6 +79,9 @@ jobs:
           file: docker/Dockerfile
           platforms: linux/amd64
           push: true
+          # Tencent Cloud's shared registry accepts the image manifest but not
+          # BuildKit's default OCI provenance attachment.
+          provenance: false
           tags: ${{ vars.TCR_IMAGE }}:${{ github.ref_name }}
           build-args: |
             CADDY_VERSION=${{ env.CADDY_VERSION }}
