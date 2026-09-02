@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Go and Caddy checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: caddy
+          POSTGRES_USER: caddy
+          POSTGRES_PASSWORD: caddy-ci-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U caddy -d caddy"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      DATABASE_URL: postgresql://caddy:caddy-ci-password@localhost:5432/caddy?sslmode=disable
+      CADDY_VERSION: 2.11.4
+      XCADDY_VERSION: v0.4.5
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Check formatting
+        shell: bash
+        run: test -z "$(gofmt -l .)"
+
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Run tests with race detector
+        run: go test -race -count=1 ./...
+
+      - name: Build Caddy with pgstore
+        run: |
+          go run github.com/caddyserver/xcaddy/cmd/xcaddy@${XCADDY_VERSION} \
+            build "v${CADDY_VERSION}" \
+            --with github.com/c2hy/caddy-pgstore=.
+          ./caddy list-modules | grep -Fx caddy.storage.postgres
