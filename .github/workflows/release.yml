@@ -72,16 +72,18 @@ jobs:
           username: ${{ secrets.TCR_USERNAME }}
           password: ${{ secrets.TCR_PASSWORD }}
 
-      - name: Build and push amd64 image
+      - name: Build amd64 image
         uses: docker/build-push-action@v7
         with:
           context: .
           file: docker/Dockerfile
           platforms: linux/amd64
-          push: true
+          load: true
           # Tencent Cloud's shared registry accepts the image manifest but not
-          # BuildKit's default OCI provenance attachment.
+          # BuildKit's registry exporter. Load into the runner's Docker engine
+          # first, then use the Docker client for the registry push below.
           provenance: false
+          sbom: false
           tags: ${{ vars.TCR_IMAGE }}:${{ github.ref_name }}
           build-args: |
             CADDY_VERSION=${{ env.CADDY_VERSION }}
@@ -93,6 +95,19 @@ jobs:
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
           cache-from: type=gha,scope=caddy-pgstore
           cache-to: type=gha,mode=max,scope=caddy-pgstore
+
+      - name: Verify and push amd64 image to TCR
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="$TCR_IMAGE:$GITHUB_REF_NAME"
+          arch="$(docker image inspect "$image" --format '{{.Architecture}}')"
+          os="$(docker image inspect "$image" --format '{{.Os}}')"
+          if [[ "$os" != "linux" || "$arch" != "amd64" ]]; then
+            echo "Expected linux/amd64 image, got ${os}/${arch}" >&2
+            exit 1
+          fi
+          docker push "$image"
 
       - name: Create GitHub Release
         env:
