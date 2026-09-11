@@ -55,9 +55,11 @@ jobs:
       - name: Run tests with race detector
         run: go test -race -count=1 ./...
 
-      - name: Build Caddy with pgstore
+      - name: Build Caddy with pgstore and DNSPod
         run: |
           go run github.com/caddyserver/xcaddy/cmd/xcaddy@${XCADDY_VERSION} \
             build "v${CADDY_VERSION}" \
-            --with github.com/c2hy/caddy-pgstore=.
+            --with github.com/c2hy/caddy-pgstore=. \
+            --with github.com/caddy-dns/dnspod@fb7cc31cc04c68a304b8d2672c3e5d9f2ad3d7ba
           ./caddy list-modules | grep -Fx caddy.storage.postgres
+          ./caddy list-modules | grep -Fx dns.providers.dnspod
