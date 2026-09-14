@@ -12,9 +12,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     cd /src/caddy-pgstore \
     && xcaddy build "v${CADDY_VERSION}" \
         --with github.com/c2hy/caddy-pgstore=/src/caddy-pgstore \
-        --with github.com/caddy-dns/dnspod@fb7cc31cc04c68a304b8d2672c3e5d9f2ad3d7ba \
-    && ./caddy list-modules | grep -Fx caddy.storage.postgres \
-    && ./caddy list-modules | grep -Fx dns.providers.dnspod
+    && ./caddy list-modules | grep -Fx caddy.storage.postgres
 
 FROM caddy:${CADDY_VERSION}-alpine
 
